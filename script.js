@@ -1,11 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- CORRECTION 1 : GESTION DU THÈME AVEC LOGS DE DÉBOGAGE ---
+    // --- GESTION DU THÈME ---
     const themeToggleBtn = document.getElementById('theme-toggle');
     const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
     const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
 
     const updateThemeAppearance = () => {
-        // Cette fonction met à jour UNIQUEMENT l'icône, en se basant sur la classe de <html>
         if (document.documentElement.classList.contains('dark')) {
             themeToggleDarkIcon.classList.add('hidden');
             themeToggleLightIcon.classList.remove('hidden');
@@ -15,35 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Applique l'état visuel initial au chargement
-    console.log('[Theme] Chargement de la page. Thème actuel via localStorage :', localStorage.getItem('color-theme'));
     updateThemeAppearance();
 
     themeToggleBtn.addEventListener('click', () => {
-        console.log('[Theme] Bouton cliqué !');
-        
-        // 1. On vérifie l'état ACTUEL
         const isDark = document.documentElement.classList.contains('dark');
-        console.log('[Theme] Le thème est-il sombre AVANT le clic ?', isDark);
-
-        // 2. On inverse l'état
         if (isDark) {
-            console.log('[Theme] Action : Passage au thème CLAIR.');
             document.documentElement.classList.remove('dark');
             localStorage.setItem('color-theme', 'light');
         } else {
-            console.log('[Theme] Action : Passage au thème SOMBRE.');
             document.documentElement.classList.add('dark');
             localStorage.setItem('color-theme', 'dark');
         }
-
-        // 3. On met à jour l'apparence des icônes
         updateThemeAppearance();
-        
-        console.log('[Theme] État final de la classe <html> :', document.documentElement.className);
-        console.log('------------------------------------');
     });
-
 
     // --- CHARGEMENT ET GÉNÉRATION DES DÉCOMPTES ---
     fetch('config.json')
@@ -54,19 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const countdownCard = document.createElement('div');
                 countdownCard.className = 'bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center transition-colors duration-300 relative';
                 
-                // --- CORRECTION 2 : NOUVELLE LOGIQUE POUR L'EASTER EGG ---
-                // On réintroduit les compteurs
                 countdownCard.dataset.clickCount = 0;
                 countdownCard.dataset.easterEggUnlocked = 'false';
 
                 let dromCountdownHTML = '';
                 if (personne.dateDepartDrom) {
                     dromCountdownHTML = `
-                        <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Départ du Drom dans :</p>
+                        <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Départ des dorms dans :</p>
                         <div id="timer-drom-${index}" class="text-3xl font-mono text-cyan-500"></div>
                     `;
                 } else {
-                    dromCountdownHTML = `<p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Déjà sur place, veinard !</p>`;
+                    dromCountdownHTML = `<p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Roger te garde en captivité</p>`;
                 }
                 
                 const retourDate = new Date(personne.dateRetourFrance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -74,9 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 countdownCard.innerHTML = `
                     <h2 class="text-2xl font-bold mb-2">${personne.prenom} ${personne.nom}</h2>
                     ${dromCountdownHTML} 
-                    <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Retour en France dans :</p>
+                    <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">On se parle plus dans :</p>
                     <div id="timer-retour-${index}" class="text-3xl font-mono text-indigo-500"></div>
-                    <p class="text-xs mt-4 text-gray-400"> ${retourDate}</p>
+                    <p class="text-xs mt-4 text-gray-400">${retourDate}</p>
                 `;
                 container.appendChild(countdownCard);
 
@@ -91,27 +72,96 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isUnlocked = countdownCard.dataset.easterEggUnlocked === 'true';
 
                     if (isUnlocked) {
-                        // Si c'est débloqué, on lance les confettis à chaque clic
                         triggerEmojiConfetti(countdownCard);
-                        return; // On arrête ici
+                        return;
                     }
                     
-                    // Si ce n'est pas débloqué, on incrémente le compteur
                     let clickCount = parseInt(countdownCard.dataset.clickCount) + 1;
                     countdownCard.dataset.clickCount = clickCount;
 
-                    // On vérifie si on a atteint le seuil de 10 clics
                     if (clickCount >= 10) {
                         countdownCard.dataset.easterEggUnlocked = 'true';
-                        // On lance les confettis pour la première fois
                         triggerEmojiConfetti(countdownCard);
                     }
                 });
             });
         });
+
+    // --- ANIMATION DE PLUIE TRISTE ---
+    const canvas = document.getElementById('rain-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const RAIN_COUNT = 200;
+    const RAIN_COLOR_LIGHT = 'rgba(17, 24, 39, 0.5)';
+    const RAIN_COLOR_DARK = 'rgba(156, 163, 175, 0.5)';
+    let raindrops = [];
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    class RainDrop {
+        constructor() {
+            this.reset();
+            this.y = Math.random() * canvas.height; 
+        }
+
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * -100;
+            this.length = Math.random() * 20 + 10;
+            this.speed = Math.random() * 4 + 2;
+            this.opacity = Math.random() * 0.5 + 0.2;
+        }
+
+        draw() {
+            const isDark = document.documentElement.classList.contains('dark');
+            ctx.strokeStyle = isDark ? RAIN_COLOR_DARK : RAIN_COLOR_LIGHT;
+            
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = this.opacity;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x, this.y + this.length);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+
+        update() {
+            this.y += this.speed;
+            if (this.y > canvas.height) {
+                this.reset();
+            }
+        }
+    }
+
+    function setupRain() {
+        resizeCanvas();
+        for (let i = 0; i < RAIN_COUNT; i++) {
+            raindrops.push(new RainDrop());
+        }
+    }
+
+    function animateRain() {
+        const isDark = document.documentElement.classList.contains('dark');
+        ctx.fillStyle = isDark ? 'rgba(17, 24, 39, 0.1)' : 'rgba(241, 245, 249, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (const drop of raindrops) {
+            drop.update();
+            drop.draw();
+        }
+        requestAnimationFrame(animateRain);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    setupRain();
+    animateRain();
 });
 
-// Le reste du code (updateCountdown et triggerEmojiConfetti) est identique à la version précédente
+// --- FONCTIONS UTILITAIRES (HORS DU DOMCONTENTLOADED) ---
+
 function updateCountdown(targetDate, elementId) {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -119,7 +169,7 @@ function updateCountdown(targetDate, elementId) {
     const now = new Date().getTime();
     const difference = target - now;
     if (difference <= 0) {
-        element.innerText = "C'est ciao !";
+        element.innerText = "C'est Ciaooooo !";
         return;
     }
     const days = Math.floor(difference / (1000 * 60 * 60 * 24));
